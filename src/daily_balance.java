@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 
+
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.conf.Configuration;
@@ -26,17 +27,47 @@ import org.apache.hadoop.util.GenericOptionsParser;
 public class daily_balance { // based on example
 
   public static class flowMapper extends
-      Mapper<> {
-
-    
+      Mapper<LongWritable, Text, Text, Text > {
+        @Override
+        public void map(LongWritable key, Text value, Context context)
+            throws IOException, InterruptedException {
+              String line = value.toString();
+              String[] tokens = line.split(",");
+              String date = tokens[1];
+              String purchase_amount;
+              if(purchase_amount.isEmpty()){
+                purchase_amount = "0";
+              } 
+              else{
+                purchase_amount = tokens[4];
+              }
+              String redeem_amount;
+              if(redeem_amount.isEmpty()){
+                redeem_amount = "0";
+              } 
+              else{
+                redeem_amount = tokens[5];
+              }
+              context.write(new Text(date), new Text(purchase_amount + "|" + redeem_amount));
+            }
 
     
     }
 
   public static class flowReducer extends
-      Reducer<> {
-    
-
+      Reducer<Text, Text, Text, Text> {
+        @Override
+        public void reduce(Text key, Iterable<Text> values, Context context)
+            throws IOException, InterruptedException {
+              int purchase_sum = 0;
+              int redeem_sum = 0;
+              for (Text value : values) {
+                String[] tokens = value.toString().split(",");
+                purchase_sum += Integer.parseInt(tokens[0]);
+                redeem_sum += Integer.parseInt(tokens[1]);
+              }
+              context.write(key, new Text(purchase_sum + "|" + redeem_sum));
+            }
     
     }
 
@@ -44,13 +75,12 @@ public class daily_balance { // based on example
 
   public static void main(String[] args) throws Exception {
     Configuration conf = new Configuration();
-    conf.set("stopwordlist", args[2]);
-    Job job = new Job(conf, "daily_balance");
-    job.setJarByClass();
-    job.setMapperClass();
-    job.setReducerClass();
-    job.setOutputKeyClass();
-    job.setOutputValueClass();
+    Job job = new Job(conf, "daily balance");
+    job.setJarByClass(daily_balance.class);
+    job.setMapperClass(flowMapper.class);
+    job.setReducerClass(flowReducer.class);
+    job.setOutputKeyClass(Text.class);
+    job.setOutputValueClass(Text.class);
     FileInputFormat.addInputPath(job, new Path(args[0]));
     FileOutputFormat.setOutputPath(job, new Path(args[1]));
     System.exit(job.waitForCompletion(true) ? 0 : 1);
