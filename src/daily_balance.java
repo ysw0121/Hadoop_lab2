@@ -28,27 +28,25 @@ public class daily_balance { // based on example
 
   public static class flowMapper extends
       Mapper<LongWritable, Text, Text, Text > {
+        private boolean isFirstLine = true;
         @Override
         public void map(LongWritable key, Text value, Context context)
             throws IOException, InterruptedException {
-              String line = value.toString();
-              String[] tokens = line.split(",");
+              if (isFirstLine) {
+                isFirstLine = false;
+                return;
+              }
+              String[] tokens = value.toString().split(",");
               String date = tokens[1];
-              String purchase_amount;
+              String purchase_amount=tokens[4];
               if(purchase_amount.isEmpty()){
                 purchase_amount = "0";
               } 
-              else{
-                purchase_amount = tokens[4];
-              }
-              String redeem_amount;
+              String redeem_amount=tokens[8];
               if(redeem_amount.isEmpty()){
                 redeem_amount = "0";
               } 
-              else{
-                redeem_amount = tokens[5];
-              }
-              context.write(new Text(date), new Text(purchase_amount + "|" + redeem_amount));
+              context.write(new Text(date), new Text(purchase_amount + "," + redeem_amount));
             }
 
     
@@ -59,14 +57,20 @@ public class daily_balance { // based on example
         @Override
         public void reduce(Text key, Iterable<Text> values, Context context)
             throws IOException, InterruptedException {
-              int purchase_sum = 0;
-              int redeem_sum = 0;
+              long purchase_sum = 0;
+              long redeem_sum = 0;
               for (Text value : values) {
                 String[] tokens = value.toString().split(",");
-                purchase_sum += Integer.parseInt(tokens[0]);
-                redeem_sum += Integer.parseInt(tokens[1]);
+                if(tokens.length >1){
+                  try{
+                    purchase_sum += Long.parseLong(tokens[0]);
+                    redeem_sum += Long.parseLong(tokens[1]);
+                  }catch(NumberFormatException e){
+                    System.out.println("Error in parsing");
+                  }
+                }
               }
-              context.write(key, new Text(purchase_sum + "|" + redeem_sum));
+              context.write(key, new Text(purchase_sum + "," + redeem_sum));
             }
     
     }
