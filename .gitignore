@@ -3,4 +3,5 @@ src/*.jar
 data
 target/lab2_task1_build
 target/task2
+target/task3
 
