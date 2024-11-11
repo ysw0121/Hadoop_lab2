@@ -67,6 +67,8 @@ public class weekly_balance { // based on example
 
   public static class flowReducer extends
   Reducer<Text, Text, Text, Text> {
+    private Map<String, Long> map_pur = new HashMap<String, Long>();
+    private Map<String, Long> map_red = new HashMap<String, Long>();
     @Override    
     public void reduce(Text key, Iterable<Text> values, Context context)
     throws IOException, InterruptedException{
@@ -87,8 +89,20 @@ public class weekly_balance { // based on example
       }
       long purchase_avg=purchase_sum/cnt;
       long redeem_avg=redeem_sum/cnt;
-      context.write(key, new Text(purchase_avg + "," + redeem_avg));
-    }    
+      // context.write(key, new Text(purchase_avg + "," + redeem_avg));
+      map_pur.put(key.toString(), purchase_avg);
+      map_red.put(key.toString(), redeem_avg);
+    }   
+    @Override
+    protected void cleanup(Context context) throws IOException, InterruptedException {
+      // sort the map with purchase_avg, big -> small
+      List<Map.Entry<String, Long>> list = new ArrayList<Map.Entry<String, Long>>(map_pur.entrySet());
+      list.sort((o1, o2) -> (int)(o2.getValue() - o1.getValue()));
+      for(Map.Entry<String, Long> entry : list){
+        context.write(new Text(entry.getKey()), new Text(entry.getValue() + "," + map_red.get(entry.getKey())));
+      }
+
+    }
 }
 
     
